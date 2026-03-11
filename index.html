@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vermogenssimulatie</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #0b0b10;
+  --surface:  #13131c;
+  --border:   #1e1e2c;
+  --border2:  #2a2a3d;
+  --text:     #ece9f6;
+  --muted:    #8080a8;
+  --faint:    #3a3a52;
+  --green:    #5cba8a;
+  --green-s:  #2d7a58;
+  --blue:     #7b8cde;
+  --purple:   #a47fd4;
+  --yellow:   #c8a96e;
+  --red:      #d4706a;
+  --orange:   #d4906a;
+  --green-bg: #0c1a15;
+  --blue-bg:  #111228;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:300px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-logo{width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.topbar-title{font-weight:500;font-size:15px;letter-spacing:.01em}
+.topbar-sub{font-size:11.5px;color:var(--muted);margin-left:4px;letter-spacing:.02em}
+.sources{font-size:11px;color:var(--faint);text-align:right;line-height:1.7}
+.sources strong{color:var(--muted)}
+
+.sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:20px 0}
+.main{overflow-y:auto;padding:24px}
+
+/* ── SIDEBAR ── */
+.s-section{padding:0 16px;margin-bottom:4px}
+.s-section+.s-section{margin-top:20px}
+.s-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:0 16px;margin-bottom:10px;display:block}
+.s-divider{height:1px;background:var(--border);margin:16px 0}
+
+/* Phase pills */
+.pill-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 16px;margin-bottom:16px}
+.pill{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;cursor:pointer;text-align:center;transition:all .15s;font-size:12px;color:var(--muted);line-height:1.4}
+.pill strong{display:block;font-size:13px;color:var(--text);margin-bottom:1px}
+.pill.active{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.pill.active strong{color:var(--blue)}
+
+/* Allocation */
+.alloc-wrap{padding:0 16px}
+.alloc-bar-bg{height:4px;border-radius:2px;background:var(--bg);overflow:hidden;display:flex;margin-bottom:14px;border:1px solid var(--border)}
+.alloc-seg{height:100%;transition:width .3s}
+
+.slider-item{margin-bottom:14px}
+.slider-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.slider-name{font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:6px}
+.slider-dot{width:7px;height:7px;border-radius:50%}
+.slider-pct{font-size:13px;font-weight:700}
+.slider-meta{font-size:11px;color:var(--faint);margin-bottom:5px}
+.slider-meta em{color:var(--muted);font-style:normal}
+input[type=range]{width:100%;cursor:pointer;height:3px;border-radius:2px;appearance:none;-webkit-appearance:none;outline:none}
+input[type=range]::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%;border:2px solid;cursor:pointer;-webkit-appearance:none}
+
+.alloc-pill{font-size:11px;text-align:center;padding:4px 8px;border-radius:5px;margin-bottom:12px}
+.alloc-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-s)}
+.alloc-err{background:#1a0d0d;color:var(--red);border:1px solid #6e1c1c}
+
+.blended-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.bl-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.bl-lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.bl-val{font-size:14px;font-weight:700}
+
+/* Param sliders */
+.param-item{padding:0 16px;margin-bottom:14px}
+.param-header{display:flex;justify-content:space-between;margin-bottom:5px}
+.param-label{font-size:12.5px;color:var(--muted)}
+.param-val{font-size:13px;font-weight:600;color:var(--text)}
+
+.run-btn{margin:4px 16px 0;width:calc(100% - 32px);background:var(--green-s);border:1px solid var(--green);color:var(--text);border-radius:6px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.run-btn:hover{opacity:.85}
+
+/* ── MAIN AREA ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.stat-lbl{font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.stat-val{font-size:22px;font-weight:700;letter-spacing:-.5px}
+.stat-sub{font-size:11px;color:var(--faint);margin-top:4px}
+.stat-bar{height:2px;border-radius:1px;margin-top:8px;background:var(--border)}
+.stat-bar-fill{height:100%;border-radius:1px}
+
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.chart-title{font-size:13px;font-weight:600;color:var(--text)}
+.chart-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.legend{display:flex;flex-wrap:wrap;gap:12px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.leg-swatch{width:16px;height:3px;border-radius:2px}
+.chart-area{position:relative;height:360px}
+.chart-note{font-size:11px;color:var(--faint);margin-top:10px;line-height:1.5;padding-top:10px;border-top:1px solid var(--border)}
+
+/* Bottom two cols */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.card-title span{color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px}
+
+/* NL input */
+.nl-area{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:10px 12px;font-size:12.5px;line-height:1.7;resize:vertical;min-height:80px;font-family:inherit;transition:border-color .15s;margin-bottom:8px}
+.nl-area:focus{outline:none;border-color:var(--blue)}
+.nl-area::placeholder{color:var(--faint)}
+.nl-btn{width:100%;background:var(--bg);border:1px solid var(--blue);border-radius:6px;padding:7px;font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;transition:all .15s;margin-bottom:6px}
+.nl-btn:hover{background:var(--blue-bg)}
+.nl-msg{font-size:11px;padding:6px 9px;border-radius:5px;margin-bottom:10px;line-height:1.5;display:none}
+.nl-msg.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-s);display:block}
+.nl-msg.err{background:#1a0d0d;color:var(--red);border:1px solid #6e1c1c;display:block}
+.nl-msg.warn{background:#1a1400;color:var(--yellow);border:1px solid #5a3e00;display:block}
+.nl-hint{font-size:11px;color:var(--faint);line-height:1.7}
+.nl-hint em{color:var(--muted);font-style:normal}
+
+/* Chips */
+.chip-list{display:flex;flex-direction:column;gap:6px}
+.chip{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chip-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.chip-name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-meta{font-size:11px;color:var(--muted)}
+.chip-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.chip-amt{font-size:13px;font-weight:700}
+.chip-pos{color:var(--green)}
+.chip-neg{color:var(--red)}
+.chip-del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:2px;border-radius:3px;transition:color .15s;line-height:1}
+.chip-del:hover{color:var(--red)}
+.empty-state{font-size:12px;color:var(--faint);text-align:center;padding:16px 0}
+
+/* Goal chips */
+.goal-chip{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:6px}
+.goal-chip:last-child{margin-bottom:0}
+.goal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.goal-name{font-size:12.5px;font-weight:500}
+.goal-target{font-size:11px;color:var(--muted)}
+.goal-pct-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.goal-pct{font-size:18px;font-weight:700;letter-spacing:-.5px}
+.goal-median{font-size:11px;color:var(--faint)}
+.goal-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.goal-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+.goal-pending{font-size:11px;color:var(--faint);padding:4px 0}
+
+/* ── CLIENT PROFILE ── */
+.cp-wrap{display:flex;align-items:center;gap:8px}
+.cp-field{display:flex;flex-direction:column;gap:2px}
+.cp-lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+.cp-input{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:4px 8px;font-size:13px;font-family:inherit;width:100%}
+.cp-input:focus{outline:none;border-color:var(--blue)}
+.cp-name{width:140px}
+.cp-age{width:52px;text-align:center}
+.cp-sep{color:var(--faint);font-size:12px;margin-top:14px}
+
+/* ── PRESENTATION MODE ── */
+.pres-btn{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--muted);padding:5px 11px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.pres-btn:hover{border-color:var(--blue);color:var(--blue)}
+.app.present .sidebar{display:none}
+.app.present{grid-template-columns:0 1fr}
+.app.present .pres-btn{border-color:var(--green);color:var(--green)}
+.app.present .chart-area{height:480px}
+
+/* ── PRESETS ── */
+.preset-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 16px;margin-bottom:14px}
+.preset-btn{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 4px;cursor:pointer;text-align:center;font-size:10.5px;color:var(--muted);transition:all .15s;line-height:1.35}
+.preset-btn strong{display:block;font-size:11.5px;color:var(--text)}
+.preset-btn:hover{border-color:var(--blue);color:var(--blue)}
+.preset-btn:hover strong{color:var(--blue)}
+.preset-btn.active{background:var(--blue-bg);border-color:var(--blue)}
+.preset-btn.active strong{color:var(--blue)}
+
+/* ── SCENARIO COMPARE ── */
+.compare-btn{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--muted);padding:5px 10px;font-size:12px;cursor:pointer;transition:all .15s}
+.compare-btn:hover{border-color:var(--purple);color:var(--purple)}
+.compare-btn.active{border-color:var(--purple);color:var(--purple);background:#1a1040}
+
+/* ── SUMMARY BOX ── */
+.summary-box{background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:14px 16px;margin-top:10px;display:none}
+.summary-box.show{display:block}
+.summary-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--blue);margin-bottom:6px}
+.summary-text{font-size:13px;color:var(--text);line-height:1.7}
+.summary-text strong{color:var(--green)}
+.summary-text .warn{color:var(--yellow)}
+.summary-text .bad{color:var(--red)}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+          <rect x="1" y="1" width="28" height="28" rx="7" fill="#13131c" stroke="#2a2a3d" stroke-width="1"/>
+          <polyline points="5,22 10,15 15,18 20,9 25,12" stroke="#7b8cde" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="25" cy="12" r="1.8" fill="#5cba8a"/>
+        </svg>
+      </div>
+      <span class="topbar-title">Vermogenssimulatie</span>
+      <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+      <div class="cp-wrap">
+        <div class="cp-field">
+          <div class="cp-lbl">Naam klant</div>
+          <input class="cp-input cp-name" id="cp-naam" type="text" placeholder="Jan de Vries" oninput="updateClientHeader()"/>
+        </div>
+        <div class="cp-field">
+          <div class="cp-lbl">Leeftijd</div>
+          <input class="cp-input cp-age" id="cp-leeftijd" type="number" min="18" max="90" placeholder="42" oninput="updateAgeHorizon()"/>
+        </div>
+        <div class="cp-sep">→</div>
+        <div class="cp-field">
+          <div class="cp-lbl">Doelleeftijd</div>
+          <input class="cp-input cp-age" id="cp-doel" type="number" min="30" max="100" placeholder="67" oninput="updateAgeHorizon()"/>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="sources">
+        <strong>Korte termijn</strong> Robeco ER · Vanguard VCMM · BlackRock BII · JPM LTCMA &nbsp;|&nbsp;
+        <strong>Lange termijn</strong> DNB Commissie Parameters 2023
+      </div>
+      <button class="pres-btn" onclick="togglePresentation()" id="pres-btn">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v9H1zm6 9v2m-3 0h6"/></svg>
+        Presentatie
+      </button>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <span class="s-label">Rendementsmodel</span>
+    <div class="pill-row">
+      <div class="pill" id="pill-cma" onclick="setMode('cma')">
+        <strong>CMA only</strong>Forward-looking 5–10j
+      </div>
+      <div class="pill active" id="pill-two" onclick="setMode('two')">
+        <strong>Twee-fase ✓</strong>CMA + DNB langetermijn
+      </div>
+    </div>
+
+    <div class="s-divider"></div>
+    <span class="s-label">Portefeuille</span>
+
+    <div class="preset-row">
+      <div class="preset-btn" id="pre-def" onclick="applyPreset('def')"><strong>Defensief</strong>20/70/10</div>
+      <div class="preset-btn active" id="pre-bal" onclick="applyPreset('bal')"><strong>Gebalanceerd</strong>60/30/10</div>
+      <div class="preset-btn" id="pre-gro" onclick="applyPreset('gro')"><strong>Groei</strong>80/15/5</div>
+      <div class="preset-btn" id="pre-pe" onclick="applyPreset('pe')"><strong>PE-mix</strong>50/25/5/20</div>
+    </div>
+
+    <div class="alloc-wrap">
+      <div class="alloc-bar-bg">
+        <div class="alloc-seg" id="seg-eq" style="background:var(--blue);width:60%"></div>
+        <div class="alloc-seg" id="seg-bo" style="background:var(--purple);width:30%"></div>
+        <div class="alloc-seg" id="seg-ca" style="background:var(--yellow);width:10%"></div>
+        <div class="alloc-seg" id="seg-pe" style="background:var(--orange);width:0%"></div>
+      </div>
+
+      <div class="slider-item">
+        <div class="slider-header">
+          <div class="slider-name"><div class="slider-dot" style="background:var(--blue)"></div>Wereldwijd aandelen</div>
+          <div class="slider-pct" style="color:var(--blue)" id="pct-eq">60%</div>
+        </div>
+        <div class="slider-meta">CMA <em>7.3%</em> · DNB <em>7.0%</em> nom. · σ <em>15.5%</em></div>
+        <input type="range" id="sl-eq" min="0" max="100" step="5" value="60"
+          style="accent-color:var(--blue)" oninput="onSlider()"/>
+      </div>
+
+      <div class="slider-item">
+        <div class="slider-header">
+          <div class="slider-name"><div class="slider-dot" style="background:var(--purple)"></div>Obligaties (global)</div>
+          <div class="slider-pct" style="color:var(--purple)" id="pct-bo">30%</div>
+        </div>
+        <div class="slider-meta">CMA <em>4.1%</em> · DNB <em>3.8%</em> nom. · σ <em>6.0%</em></div>
+        <input type="range" id="sl-bo" min="0" max="100" step="5" value="30"
+          style="accent-color:var(--purple)" oninput="onSlider()"/>
+      </div>
+
+      <div class="slider-item">
+        <div class="slider-header">
+          <div class="slider-name"><div class="slider-dot" style="background:var(--yellow)"></div>Liquiditeiten</div>
+          <div class="slider-pct" style="color:var(--yellow)" id="pct-ca">10%</div>
+        </div>
+        <div class="slider-meta">CMA <em>2.8%</em> · DNB <em>2.0%</em> nom. · σ <em>0.5%</em></div>
+        <input type="range" id="sl-ca" min="0" max="100" step="5" value="10"
+          style="accent-color:var(--yellow)" oninput="onSlider()"/>
+      </div>
+
+      <div class="slider-item">
+        <div class="slider-header">
+          <div class="slider-name"><div class="slider-dot" style="background:var(--orange)"></div>Private Equity</div>
+          <div class="slider-pct" style="color:var(--orange)" id="pct-pe">0%</div>
+        </div>
+        <div class="slider-meta">CMA <em>11.0%</em> · DNB <em>9.5%</em> nom. · σ <em>25.0%</em> · illiquiditeitspremie</div>
+        <input type="range" id="sl-pe" min="0" max="100" step="5" value="0"
+          style="accent-color:var(--orange)" oninput="onSlider()"/>
+      </div>
+
+      <div class="alloc-pill alloc-ok" id="alloc-status">✓ 100%</div>
+
+      <div class="blended-grid">
+        <div class="bl-card"><div class="bl-lbl">Rendement fase 1</div><div class="bl-val" style="color:var(--green)" id="bl-r1">—</div></div>
+        <div class="bl-card"><div class="bl-lbl">Rendement fase 2</div><div class="bl-val" style="color:var(--blue)" id="bl-r2">—</div></div>
+        <div class="bl-card"><div class="bl-lbl">Volatiliteit</div><div class="bl-val" style="color:var(--purple)" id="bl-v">—</div></div>
+        <div class="bl-card"><div class="bl-lbl">Reëel (fase 2)</div><div class="bl-val" style="color:var(--green)" id="bl-real">—</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--faint);line-height:1.6;margin-bottom:4px">Corr. eq↔obl −0.05 · eq↔PE 0.65 · PE illiquide, gesmoothde rapportage · infl. 2.2%</div>
+    </div>
+
+    <div class="s-divider"></div>
+    <span class="s-label">Parameters</span>
+
+    <div class="param-item">
+      <div class="param-header"><span class="param-label">Beginkapitaal</span><span class="param-val" id="v-begin">€ 50.000</span></div>
+      <input type="range" id="beginkapitaal" min="0" max="1000000" step="5000" value="50000"
+        style="accent-color:var(--green)" oninput="updateLabel('begin',this.value,true)"/>
+    </div>
+    <div class="param-item">
+      <div class="param-header"><span class="param-label">Maandelijkse inleg</span><span class="param-val" id="v-inleg">€ 500</span></div>
+      <input type="range" id="inleg" min="0" max="10000" step="100" value="500"
+        style="accent-color:var(--green)" oninput="updateLabel('inleg',this.value,true)"/>
+    </div>
+    <div class="param-item">
+      <div class="param-header"><span class="param-label">Tijdshorizon</span><span class="param-val" id="v-jaren">30 jaar</span></div>
+      <input type="range" id="jaren" min="5" max="60" step="1" value="30"
+        style="accent-color:var(--green)" oninput="updateLabel('jaren',this.value,false,'jaar')"/>
+    </div>
+    <div class="param-item" id="trans-field">
+      <div class="param-header"><span class="param-label">Overgang CMA → DNB</span><span class="param-val" id="v-trans">Jaar 10</span></div>
+      <input type="range" id="transitie" min="3" max="20" step="1" value="10"
+        style="accent-color:var(--purple)" oninput="updateLabel('trans',this.value,false,'jaar')"/>
+    </div>
+    <div class="param-item">
+      <div class="param-header"><span class="param-label">Simulaties</span><span class="param-val" id="v-sims">2.000</span></div>
+      <input type="range" id="sims" min="500" max="10000" step="500" value="2000"
+        style="accent-color:var(--green)" oninput="updateLabel('sims',this.value,false,'#')"/>
+    </div>
+
+    <button class="run-btn" onclick="runSimulation()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>
+      Simuleer
+    </button>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Stats -->
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-lbl">Mediaan eindvermogen</div>
+        <div class="stat-val" style="color:var(--green)" id="stat-p50">—</div>
+        <div class="stat-sub">50% kans om te bereiken</div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:50%;background:var(--green)"></div></div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Pessimistisch (P10)</div>
+        <div class="stat-val" style="color:var(--red)" id="stat-p10">—</div>
+        <div class="stat-sub">90% kans om te bereiken</div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:90%;background:var(--red)"></div></div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Optimistisch (P90)</div>
+        <div class="stat-val" style="color:var(--blue)" id="stat-p90">—</div>
+        <div class="stat-sub">10% kans om te bereiken</div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:10%;background:var(--blue)"></div></div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Kans op verlies</div>
+        <div class="stat-val" style="color:var(--yellow)" id="stat-loss">—</div>
+        <div class="stat-sub">t.o.v. totale inleg</div>
+        <div class="stat-bar" id="loss-bar"><div class="stat-bar-fill" id="loss-bar-fill" style="width:0%;background:var(--yellow)"></div></div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">Vermogensverloop over tijd</div>
+          <div class="chart-meta" id="chart-meta">Reëel · koopkracht van vandaag · na inflatie 2.2%</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="legend">
+            <div class="leg-item"><div class="leg-swatch" style="background:var(--green)"></div>Mediaan (P50)</div>
+            <div class="leg-item"><div class="leg-swatch" style="background:var(--blue);opacity:.7"></div>P25–P75</div>
+            <div class="leg-item"><div class="leg-swatch" style="background:var(--blue);opacity:.3"></div>P10–P90</div>
+            <div class="leg-item"><div class="leg-swatch" style="background:var(--yellow);opacity:.7"></div>Inleg</div>
+            <div class="leg-item" id="leg-def" style="display:none"><div class="leg-swatch" style="background:#8b949e;opacity:.7"></div>Defensief</div>
+            <div class="leg-item" id="leg-gro" style="display:none"><div class="leg-swatch" style="background:var(--purple);opacity:.7"></div>Groei</div>
+          </div>
+          <button class="compare-btn" id="compare-btn" onclick="toggleCompare()">⇄ Vergelijk scenario's</button>
+        </div>
+      </div>
+      <div class="chart-area"><canvas id="myChart"></canvas></div>
+      <div class="chart-note" id="chart-note">Voer parameters in en klik Simuleer om resultaten te zien.</div>
+      <div class="summary-box" id="summary-box">
+        <div class="summary-title">📋 Samenvatting voor klant</div>
+        <div class="summary-text" id="summary-text"></div>
+      </div>
+    </div>
+
+    <!-- Bottom: Events + Goals -->
+    <div class="bottom-grid">
+
+      <!-- EVENTS -->
+      <div class="card">
+        <div class="card-title">
+          Toekomstplannen
+          <span id="ev-count"></span>
+        </div>
+        <textarea class="nl-area" id="nl-input" placeholder="Beschrijf plannen in gewone taal, één per regel:
+
+Gift aan kind €25.000 jaar 10
+Jaarlijkse schenking €5.000 jaar 5 tot jaar 15
+Verbouwing -€40.000 jaar 8
+Erfenis €100k jaar 20"></textarea>
+        <button class="nl-btn" onclick="parseNL()">↵ Verwerk invoer</button>
+        <div class="nl-msg" id="nl-msg"></div>
+        <div class="nl-hint">
+          <em>Tip:</em> gebruik +/− voor ontvangsten en uitgaven.<br>
+          "jaarlijks" of "per jaar" voor terugkerende bedragen.
+        </div>
+        <div class="s-divider" style="margin:12px 0"></div>
+        <div class="chip-list" id="events-list">
+          <div class="empty-state" id="ev-empty">Nog geen levensmomenten toegevoegd</div>
+        </div>
+      </div>
+
+      <!-- GOALS -->
+      <div class="card">
+        <div class="card-title">
+          Financiële doelen
+          <span id="goal-count"></span>
+        </div>
+        <textarea class="nl-area" id="nl-goal-input" placeholder="Beschrijf uw doelen, één per regel:
+
+Doel pensioen €600.000 jaar 30
+Wil €200.000 hebben jaar 20
+Studiegeld kind €50k jaar 18"></textarea>
+        <button class="nl-btn" onclick="parseGoalNL()">↵ Verwerk doelen</button>
+        <div class="nl-msg" id="nl-goal-msg"></div>
+        <div class="nl-hint">
+          <em>Tip:</em> na het simuleren ziet u direct de kans op elk doel.<br>
+          Groen ≥ 70% · Geel 40–70% · Rood &lt; 40%
+        </div>
+        <div class="s-divider" style="margin:12px 0"></div>
+        <div id="goals-list">
+          <div class="empty-state" id="goal-empty">Nog geen doelen toegevoegd</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+</div><!-- /app -->
+
+<script>
+// ── DATA ──
+const INFLATION=.022, RF=.025;
+// CMA: consensus Robeco ER/Vanguard VCMM/BlackRock BII/JPM LTCMA 2025 (nominal)
+// PE: illiquidity premium ~3-4% over public equity; σ reflects smoothed reporting
+const CMA={eq:{r:.073,v:.155},bo:{r:.041,v:.060},ca:{r:.028,v:.005},pe:{r:.110,v:.250}};
+const DNB={eq:{r:.070,v:.155},bo:{r:.038,v:.060},ca:{r:.020,v:.005},pe:{r:.095,v:.250}};
+// Correlation matrix order: [eq, bo, ca, pe]
+const ASSETS=['eq','bo','ca','pe'];
+const CORR_M=[
+//  eq     bo     ca     pe
+  [ 1.00, -0.05,  0.00,  0.65],  // eq
+  [-0.05,  1.00,  0.20, -0.05],  // bo
+  [ 0.00,  0.20,  1.00,  0.00],  // ca
+  [ 0.65, -0.05,  0.00,  1.00],  // pe
+];
+
+let wEq=.60,wBo=.30,wCa=.10,wPe=.00,mode='two';
+let eventsData=[],goalsData=[],eventId=0,goalId=0;
+let lastPaths=[],lastJaren=0;
+
+// ── BLENDED ── (generalised N-asset portfolio)
+function blended(src){
+  const w=[wEq,wBo,wCa,wPe];
+  let r=0;
+  ASSETS.forEach((a,i)=>{ r+=w[i]*src[a].r; });
+  let v2=0;
+  ASSETS.forEach((a,i)=>{
+    ASSETS.forEach((b,j)=>{
+      v2+=w[i]*w[j]*src[a].v*src[b].v*CORR_M[i][j];
+    });
+  });
+  return{r,v:Math.sqrt(Math.max(v2,0))};
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('pill-cma').classList.toggle('active',m==='cma');
+  document.getElementById('pill-two').classList.toggle('active',m==='two');
+  document.getElementById('trans-field').style.display=m==='two'?'':'none';
+  updateBlended();
+}
+
+function updateBlended(){
+  const b1=blended(CMA),b2=blended(DNB);
+  const real2=(1+b2.r)/(1+INFLATION)-1;
+  document.getElementById('bl-r1').textContent=(b1.r*100).toFixed(2)+'%';
+  document.getElementById('bl-r2').textContent=(b2.r*100).toFixed(2)+'%';
+  document.getElementById('bl-v').textContent=(b1.v*100).toFixed(2)+'%';
+  document.getElementById('bl-real').textContent=(real2*100).toFixed(2)+'%';
+}
+
+function onSlider(){
+  wEq=+document.getElementById('sl-eq').value/100;
+  wBo=+document.getElementById('sl-bo').value/100;
+  wCa=+document.getElementById('sl-ca').value/100;
+  wPe=+document.getElementById('sl-pe').value/100;
+  const t=Math.round((wEq+wBo+wCa+wPe)*100);
+  document.getElementById('pct-eq').textContent=Math.round(wEq*100)+'%';
+  document.getElementById('pct-bo').textContent=Math.round(wBo*100)+'%';
+  document.getElementById('pct-ca').textContent=Math.round(wCa*100)+'%';
+  document.getElementById('pct-pe').textContent=Math.round(wPe*100)+'%';
+  document.getElementById('seg-eq').style.width=Math.round(wEq*100)+'%';
+  document.getElementById('seg-bo').style.width=Math.round(wBo*100)+'%';
+  document.getElementById('seg-ca').style.width=Math.round(wCa*100)+'%';
+  document.getElementById('seg-pe').style.width=Math.round(wPe*100)+'%';
+  const st=document.getElementById('alloc-status');
+  if(t!==100){st.className='alloc-pill alloc-err';st.textContent='⚠ '+t+'%'}
+  else{st.className='alloc-pill alloc-ok';st.textContent='✓ 100%';updateBlended()}
+}
+
+function fmt(v){
+  const abs=Math.abs(v),sign=v<0?'−':'';
+  if(abs>=1e6) return sign+'€ '+(abs/1e6).toFixed(2)+'M';
+  if(abs>=1e3) return sign+'€ '+Math.round(abs/1000)+'K';
+  return sign+'€ '+Math.round(abs);
+}
+function updateLabel(id,val,money,sfx=''){
+  const el=document.getElementById('v-'+id);
+  if(money) el.textContent=fmt(+val);
+  else if(sfx==='jaar') el.textContent=(id==='trans'?'Jaar ':'')+val+(id==='trans'?'':' jaar');
+  else if(sfx==='#') el.textContent=(+val).toLocaleString('nl-NL');
+}
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+
+// ── NL PARSER ──
+function parseAmt(s){
+  s=s.replace(/[€\s]/g,'').replace(/\./g,'').replace(',','.');
+  let m=1;
+  if(/k$/i.test(s)){m=1000;s=s.replace(/k$/i,'')}
+  else if(/[mM]$/.test(s)){m=1e6;s=s.replace(/[mM]$/,'')}
+  const v=parseFloat(s);
+  return isNaN(v)?null:v*m;
+}
+
+function parseLine(line){
+  const l=line.toLowerCase();
+  const amtRx=line.match(/[-−]?\s*[€$]?\s*([\d.,]+\s*[kKmM]?)\s*(?:euro|€)?/);
+  let amount=amtRx?parseAmt(amtRx[1]):null;
+  if(amount===null) return null;
+  const isNeg=/^[-−]|(?:\bkopen\b|betaal|betalen|\buitgave\b|verbouwing|hypotheek|studie\b|afloss|opname|\bgift\b|\bschenking\b|\bdonatie\b|\bschenk\b)/.test(l);
+  if(isNeg&&amount>0) amount=-amount;
+
+  const yrAll=[...line.matchAll(/(?:jaar|year|jr\.?)\s*(\d{1,2})/gi)].map(m=>+m[1]);
+  const nums=[...line.matchAll(/\b(\d{1,2})\b/g)].map(m=>+m[1]).filter(n=>n>=1&&n<=60);
+  let y1=null,y2=null;
+  if(yrAll.length>=2){y1=yrAll[0];y2=yrAll[1]}
+  else if(yrAll.length===1){y1=yrAll[0]}
+  else{const cands=nums.filter(n=>!amtRx[0].includes(String(n)));if(cands.length>=2){y1=cands[0];y2=cands[1]}else if(cands.length===1)y1=cands[0];else if(nums.length===1)y1=nums[0]}
+  if(y1===null) return null;
+
+  const isAnnual=/(jaarlijks|per\s+jaar|elk\s+jaar|ieder\s+jaar|t\/m|tot\s+jaar|tot\s+en\s+met|annually)/.test(l);
+  let desc=line.replace(/[-−]?\s*[€$]?\s*[\d.,]+\s*[kKmM]?(\s*(euro|€))?/gi,'').replace(/jaar\s*\d{1,2}/gi,'').replace(/\s{2,}/g,' ').trim();
+  desc=desc.replace(/^[,.:;·\-–]+|[,.:;·\-–]+$/g,'').trim();
+  if(!desc||desc.length<2) desc='Levensmoment';
+  desc=desc[0].toUpperCase()+desc.slice(1);
+  return{desc,amount,type:isAnnual?'annual':'once',year1:y1,year2:y2||y1};
+}
+
+function parseNL(){
+  const raw=document.getElementById('nl-input').value.trim();
+  if(!raw){showMsg('nl-msg','Voer eerst tekst in.','err');return}
+  const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  const ok=[],fail=[];
+  lines.forEach(line=>{const p=parseLine(line);if(p){ok.push(p);addEventData(p)}else fail.push(line)});
+  if(!ok.length){showMsg('nl-msg','Kon niets herkennen. Zorg voor een bedrag én een jaar.','err');return}
+  let msg=`✓ ${ok.length} moment${ok.length>1?'en':''} toegevoegd.`;
+  if(fail.length) msg+=` ${fail.length} regel${fail.length>1?'s':''} niet herkend.`;
+  showMsg('nl-msg',msg,fail.length?'warn':'ok');
+  document.getElementById('nl-input').value='';
+}
+
+function parseGoalNL(){
+  const raw=document.getElementById('nl-goal-input').value.trim();
+  if(!raw){showMsg('nl-goal-msg','Voer eerst tekst in.','err');return}
+  const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  const ok=[],fail=[];
+  lines.forEach(line=>{
+    const p=parseLine(line);
+    if(p&&p.amount>0){
+      const desc=p.desc.replace(/^doel\s*/i,'').replace(/^wil\s+/i,'').trim()||'Financieel doel';
+      ok.push({desc,amount:p.amount,year:p.year1});
+      addGoalData({desc,amount:p.amount,year:p.year1});
+    } else fail.push(line);
+  });
+  if(!ok.length){showMsg('nl-goal-msg','Kon geen doelen herkennen.','err');return}
+  let msg=`✓ ${ok.length} doel${ok.length>1?'en':''} toegevoegd.`;
+  if(fail.length) msg+=` ${fail.length} niet herkend.`;
+  showMsg('nl-goal-msg',msg,fail.length?'warn':'ok');
+  document.getElementById('nl-goal-input').value='';
+  if(lastPaths.length) updateGoals(lastPaths,lastJaren);
+}
+
+function showMsg(id,msg,type){
+  const el=document.getElementById(id);
+  el.className='nl-msg '+type;
+  el.textContent=msg;
+}
+
+function addEventData(p){
+  const id=eventId++;
+  eventsData.push({...p,id});
+  document.getElementById('ev-empty')?.remove();
+  const div=document.createElement('div');
+  div.className='chip';div.id='evchip-'+id;
+  const cls=p.amount>=0?'chip-pos':'chip-neg';
+  const amtStr=(p.amount>=0?'+':'')+fmt(p.amount);
+  const meta=p.type==='annual'?`Jaarlijks jaar ${p.year1}–${p.year2}`:`Eenmalig jaar ${p.year1}`;
+  div.innerHTML=`<div class="chip-info"><div class="chip-name">${p.desc}</div><div class="chip-meta">${meta}</div></div>
+    <div class="chip-right"><span class="chip-amt ${cls}">${amtStr}</span>
+    <button class="chip-del" onclick="removeEvent(${id})">✕</button></div>`;
+  document.getElementById('events-list').appendChild(div);
+  updateCounts();
+}
+function removeEvent(id){
+  eventsData=eventsData.filter(e=>e.id!==id);
+  document.getElementById('evchip-'+id)?.remove();
+  if(!eventsData.length){const e=document.createElement('div');e.className='empty-state';e.id='ev-empty';e.textContent='Nog geen levensmomenten toegevoegd';document.getElementById('events-list').appendChild(e)}
+  updateCounts();
+}
+
+function addGoalData({desc,amount,year}){
+  const id=goalId++;
+  goalsData.push({id,desc,amount,year});
+  document.getElementById('goal-empty')?.remove();
+  const div=document.createElement('div');
+  div.className='goal-chip';div.id='goalchip-'+id;
+  div.innerHTML=`<div class="goal-header">
+    <div><div class="goal-name">🎯 ${desc}</div><div class="goal-target">Doel: ${fmt(amount)} in jaar ${year}</div></div>
+    <button class="chip-del" onclick="removeGoal(${id})">✕</button>
+  </div>
+  <div id="goal-res-${id}"><div class="goal-pending">Simuleer om kans te berekenen →</div></div>`;
+  document.getElementById('goals-list').appendChild(div);
+  updateCounts();
+}
+function removeGoal(id){
+  goalsData=goalsData.filter(g=>g.id!==id);
+  document.getElementById('goalchip-'+id)?.remove();
+  if(!goalsData.length){const e=document.createElement('div');e.className='empty-state';e.id='goal-empty';e.textContent='Nog geen doelen toegevoegd';document.getElementById('goals-list').appendChild(e)}
+  updateCounts();
+}
+
+function updateCounts(){
+  document.getElementById('ev-count').textContent=eventsData.length?`(${eventsData.length})`:'';
+  document.getElementById('goal-count').textContent=goalsData.length?`(${goalsData.length})`:'';
+}
+
+function updateGoals(paths,jaren){
+  goalsData.forEach(g=>{
+    const y=Math.min(g.year,jaren);
+    const vals=paths.map(p=>p[y]).sort((a,b)=>a-b);
+    const pct=vals.filter(v=>v>=g.amount).length/vals.length*100;
+    const med=vals[Math.floor(.5*vals.length)];
+    const el=document.getElementById('goal-res-'+g.id);
+    if(!el) return;
+    const color=pct>=70?'var(--green)':pct>=40?'var(--yellow)':'var(--red)';
+    el.innerHTML=`<div class="goal-pct-row"><div class="goal-pct" style="color:${color}">${pct.toFixed(1)}%</div><div class="goal-median">mediaan: ${fmt(med)}</div></div>
+      <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>`;
+  });
+}
+
+// ── CLIENT PROFILE ──
+function updateClientHeader(){
+  const naam=document.getElementById('cp-naam').value.trim();
+  document.querySelector('.topbar-title').textContent=naam?`Vermogenssimulatie — ${naam}`:'Vermogenssimulatie';
+}
+function updateAgeHorizon(){
+  const leeft=+document.getElementById('cp-leeftijd').value;
+  const doel=+document.getElementById('cp-doel').value;
+  if(leeft>0&&doel>leeft){
+    const h=Math.min(60,Math.max(5,doel-leeft));
+    document.getElementById('jaren').value=h;
+    updateLabel('jaren',h,false,'jaar');
+  }
+}
+
+// ── PRESENTATION MODE ──
+let presentMode=false;
+function togglePresentation(){
+  presentMode=!presentMode;
+  document.querySelector('.app').classList.toggle('present',presentMode);
+  document.getElementById('pres-btn').innerHTML=presentMode
+    ?'<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v9H1zm6 9v2m-3 0h6"/></svg> Sluit presentatie'
+    :'<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v9H1zm6 9v2m-3 0h6"/></svg> Presentatie';
+  if(chart) chart.resize();
+}
+
+// ── PRESETS ──
+const PRESETS={
+  def:{eq:.20,bo:.65,ca:.15,pe:.00,label:'Defensief'},
+  bal:{eq:.60,bo:.30,ca:.10,pe:.00,label:'Gebalanceerd'},
+  gro:{eq:.80,bo:.15,ca:.05,pe:.00,label:'Groei'},
+  pe: {eq:.50,bo:.25,ca:.05,pe:.20,label:'PE-mix'},
+};
+let activePreset='bal';
+function applyPreset(key){
+  const p=PRESETS[key];
+  wEq=p.eq;wBo=p.bo;wCa=p.ca;wPe=p.pe;
+  document.getElementById('sl-eq').value=p.eq*100;
+  document.getElementById('sl-bo').value=p.bo*100;
+  document.getElementById('sl-ca').value=p.ca*100;
+  document.getElementById('sl-pe').value=p.pe*100;
+  activePreset=key;
+  ['def','bal','gro','pe'].forEach(k=>document.getElementById('pre-'+k).classList.toggle('active',k===key));
+  onSlider();
+}
+
+// ── SCENARIO COMPARE ──
+let compareMode=false;
+let comparePaths={def:null,gro:null};
+function toggleCompare(){
+  compareMode=!compareMode;
+  document.getElementById('compare-btn').classList.toggle('active',compareMode);
+  document.getElementById('leg-def').style.display=compareMode?'flex':'none';
+  document.getElementById('leg-gro').style.display=compareMode?'flex':'none';
+  if(compareMode) runCompareSims();
+  else if(chart){
+    // Remove compare datasets
+    chart.data.datasets=chart.data.datasets.filter(d=>!d._compare);
+    chart.update();
+  }
+}
+function runCompareSims(){
+  const jaren=+document.getElementById('jaren').value;
+  const trans=+document.getElementById('transitie').value;
+  const n=500; // fast compare
+  const begin=+document.getElementById('beginkapitaal').value;
+  const inleg=+document.getElementById('inleg').value;
+  const results={};
+  ['def','gro'].forEach(key=>{
+    const p=PRESETS[key];
+    const prevW=[wEq,wBo,wCa,wPe];
+    wEq=p.eq;wBo=p.bo;wCa=p.ca;wPe=p.pe;
+    const b1=blended(CMA),b2=blended(DNB);
+    const mu1=(1+b1.r)/(1+INFLATION)-1,mu2=(1+b2.r)/(1+INFLATION)-1;
+    const sigma=b1.v;
+    const d1=mu1-.5*sigma*sigma,d2=mu2-.5*sigma*sigma;
+    const med=[];
+    const paths=[];
+    for(let s=0;s<n;s++){
+      let w=begin;const path=[w];
+      for(let y=0;y<jaren;y++){
+        const blend=mode==='two'?Math.min(1,Math.max(0,(y-trans+1)/5)):0;
+        const r=Math.exp((1-blend)*d1+blend*d2+sigma*randn())-1;
+        w=w*(1+r)+inleg*12;
+        const yr=y+1;
+        eventsData.forEach(ev=>{
+          if(ev.type==='once'&&ev.year1===yr) w+=ev.amount;
+          if(ev.type==='annual'&&yr>=ev.year1&&yr<=ev.year2) w+=ev.amount;
+        });
+        path.push(Math.max(w,0));
+      }
+      paths.push(path);
+    }
+    for(let y=0;y<=jaren;y++){
+      const sl=paths.map(p=>p[y]).sort((a,b)=>a-b);
+      med.push(sl[Math.floor(.5*sl.length)]);
+    }
+    results[key]=med;
+    [wEq,wBo,wCa,wPe]=prevW;
+  });
+  // Inject into chart
+  if(chart){
+    chart.data.datasets=chart.data.datasets.filter(d=>!d._compare);
+    chart.data.datasets.push(
+      {label:`Mediaan Defensief`,data:results.def,borderColor:'rgba(139,148,158,.6)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.3,_compare:true},
+      {label:`Mediaan Groei`,data:results.gro,borderColor:'rgba(163,113,247,.6)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.3,_compare:true},
+    );
+    chart.update();
+  }
+}
+
+// ── SUMMARY ──
+function generateSummary(naam,jaren,p50,p10,p90,lossPct,goals){
+  const clientNaam=naam||'de klant';
+  const horizon=jaren;
+  let txt=`Op basis van de huidige portefeuille en inleg bereikt <strong>${clientNaam}</strong> in het mediaan scenario na ${horizon} jaar een vermogen van <strong>${fmt(p50)}</strong>.`;
+  txt+=` In een pessimistisch scenario (P10) is dat <strong class="${p10<0?'bad':''}>${fmt(p10)}</strong>, in een optimistisch scenario (P90) <strong>${fmt(p90)}</strong>.`;
+  if(lossPct>20) txt+=` <span class="bad">Er is een kans van ${lossPct.toFixed(0)}% op verlies ten opzichte van de totale inleg — dit vraagt om een kritisch gesprek over risicobereidheid.</span>`;
+  else if(lossPct>5) txt+=` <span class="warn">De kans op verlies t.o.v. inleg bedraagt ${lossPct.toFixed(0)}%.</span>`;
+  else txt+=` De kans op verlies t.o.v. de totale inleg is beperkt (${lossPct.toFixed(0)}%).`;
+  if(goals.length){
+    goals.forEach(g=>{
+      if(g.lastPct!=null){
+        const kls=g.lastPct>=70?'':'warn';
+        txt+=` Het doel <em>${g.desc}</em> (${fmt(g.amount)}) heeft een kans van <strong class="${kls}">${g.lastPct.toFixed(0)}%</strong>.`;
+      }
+    });
+  }
+  document.getElementById('summary-text').innerHTML=txt;
+  document.getElementById('summary-box').classList.add('show');
+}
+
+// ── SIMULATION ──
+function runSimulation(){
+  const t=Math.round((wEq+wBo+wCa+wPe)*100);
+  if(t!==100){alert('Allocatie moet 100% zijn (nu '+t+'%).');return}
+  const begin=+document.getElementById('beginkapitaal').value;
+  const inleg=+document.getElementById('inleg').value;
+  const jaren=+document.getElementById('jaren').value;
+  const trans=+document.getElementById('transitie').value;
+  const n=+document.getElementById('sims').value;
+  const b1=blended(CMA),b2=blended(DNB);
+  const mu1=(1+b1.r)/(1+INFLATION)-1,mu2=(1+b2.r)/(1+INFLATION)-1;
+  const sigma=b1.v;
+  const d1=mu1-.5*sigma*sigma,d2=mu2-.5*sigma*sigma;
+
+  const paths=[];
+  for(let s=0;s<n;s++){
+    let w=begin;const path=[w];
+    for(let y=0;y<jaren;y++){
+      const blend=mode==='two'?Math.min(1,Math.max(0,(y-trans+1)/5)):0;
+      const r=Math.exp((1-blend)*d1+blend*d2+sigma*randn())-1;
+      w=w*(1+r)+inleg*12;
+      const yr=y+1;
+      eventsData.forEach(ev=>{
+        if(ev.type==='once'&&ev.year1===yr) w+=ev.amount;
+        if(ev.type==='annual'&&yr>=ev.year1&&yr<=ev.year2) w+=ev.amount;
+      });
+      path.push(Math.max(w,0));
+    }
+    paths.push(path);
+  }
+  lastPaths=paths;lastJaren=jaren;
+
+  const labels=[],p10=[],p25=[],p50=[],p75=[],p90=[],ci=[];
+  for(let y=0;y<=jaren;y++){
+    labels.push(y===0?'Nu':'Jaar '+y);
+    const sl=paths.map(p=>p[y]).sort((a,b)=>a-b);
+    const pct=x=>sl[Math.min(Math.floor(x*sl.length),sl.length-1)];
+    p10.push(pct(.10));p25.push(pct(.25));p50.push(pct(.50));p75.push(pct(.75));p90.push(pct(.90));
+    let cumI=begin+inleg*12*y;
+    eventsData.forEach(ev=>{
+      if(ev.type==='once'&&ev.year1<=y) cumI+=ev.amount;
+      if(ev.type==='annual') cumI+=ev.amount*Math.max(0,Math.min(y,ev.year2)-ev.year1+1);
+    });
+    ci.push(cumI);
+  }
+
+  const fin=paths.map(p=>p[jaren]).sort((a,b)=>a-b);
+  const totalInleg=begin+inleg*12*jaren;
+  const vP50=fin[Math.floor(.5*fin.length)];
+  const vP10=fin[Math.floor(.1*fin.length)];
+  const vP90=fin[Math.floor(.9*fin.length)];
+  document.getElementById('stat-p50').textContent=fmt(vP50);
+  document.getElementById('stat-p10').textContent=fmt(vP10);
+  document.getElementById('stat-p90').textContent=fmt(vP90);
+  const lossPct=fin.filter(v=>v<totalInleg).length/n*100;
+  document.getElementById('stat-loss').textContent=lossPct.toFixed(1)+'%';
+  document.getElementById('loss-bar-fill').style.width=lossPct.toFixed(1)+'%';
+
+  if(mode==='two')
+    document.getElementById('chart-note').textContent=`Fase 1 (jaar 1–${trans}): CMA-rendementen  ·  Fase 2 (overgang t/m jaar ${trans+5}, daarna volledig DNB evenwicht)  ·  Reëel na inflatie 2.2%  ·  ${n.toLocaleString('nl-NL')} simulaties`;
+  else
+    document.getElementById('chart-note').textContent=`CMA-only model  ·  Reëel na inflatie 2.2%  ·  ${n.toLocaleString('nl-NL')} simulaties`;
+
+  updateGoals(paths,jaren);
+
+  // Age-based labels
+  const leeft=+document.getElementById('cp-leeftijd').value;
+  const ageLabels=leeft>0?labels.map((l,i)=>i===0?`Nu (${leeft}j)`:`${leeft+i}j`):labels;
+
+  drawChart(ageLabels,p10,p25,p50,p75,p90,ci,trans,jaren);
+
+  // Collect goal percentages for summary
+  goalsData.forEach(g=>{
+    const y=Math.min(g.year,jaren);
+    const vals=paths.map(p=>p[y]).sort((a,b)=>a-b);
+    g.lastPct=vals.filter(v=>v>=g.amount).length/vals.length*100;
+  });
+  const naam=document.getElementById('cp-naam').value.trim();
+  generateSummary(naam,jaren,vP50,vP10,vP90,lossPct,goalsData);
+
+  if(compareMode) runCompareSims();
+}
+
+// ── CHART ──
+let chart=null;
+function drawChart(labels,p10,p25,p50,p75,p90,inleg,trans,jaren){
+  if(chart) chart.destroy();
+  const ctx=document.getElementById('myChart').getContext('2d');
+
+  const annotPlugin={
+    id:'annot',
+    afterDraw(ch){
+      const{ctx:c,scales:{x,y}}=ch;
+      // CMA→DNB
+      if(mode==='two'){
+        const xpx=x.getPixelForValue(Math.min(trans,labels.length-1));
+        c.save();c.beginPath();c.moveTo(xpx,y.top);c.lineTo(xpx,y.bottom);
+        c.strokeStyle='rgba(163,113,247,.3)';c.lineWidth=1;c.setLineDash([4,3]);c.stroke();
+        c.fillStyle='rgba(163,113,247,.55)';c.font='10px system-ui';c.setLineDash([]);
+        c.fillText('CMA→DNB',xpx+4,y.top+14);c.restore();
+      }
+      // Events
+      eventsData.forEach((ev,idx)=>{
+        const isNeg=ev.amount<0;
+        const colStroke=isNeg?'rgba(212,112,106,.7)':'rgba(92,186,138,.7)';
+        const colFill  =isNeg?'rgba(212,112,106,.09)':'rgba(92,186,138,.09)';
+        const lbl=ev.desc.length>16?ev.desc.slice(0,16)+'…':ev.desc;
+        const labelOffset=28+(idx%4)*11; // stagger labels to avoid overlap
+
+        if(ev.type==='annual'){
+          // Shaded band from year1 to year2
+          const xStart=x.getPixelForValue(Math.min(ev.year1,  labels.length-1));
+          const xEnd  =x.getPixelForValue(Math.min(ev.year2+1,labels.length-1));
+          c.save();
+          // filled band
+          c.fillStyle=colFill;
+          c.fillRect(xStart,y.top,xEnd-xStart,y.bottom-y.top);
+          // left border line
+          c.beginPath();c.moveTo(xStart,y.top);c.lineTo(xStart,y.bottom);
+          c.strokeStyle=colStroke;c.lineWidth=1.5;c.setLineDash([]);c.stroke();
+          // right border line (dashed)
+          c.beginPath();c.moveTo(xEnd,y.top);c.lineTo(xEnd,y.bottom);
+          c.strokeStyle=colStroke;c.lineWidth=1;c.setLineDash([3,3]);c.stroke();
+          // label
+          c.fillStyle=colStroke;c.font='bold 10px system-ui';c.setLineDash([]);
+          c.fillText('↺ '+lbl,xStart+4,y.top+labelOffset);
+          // amount label bottom
+          const amtStr=(isNeg?'−':'+')+fmt(Math.abs(ev.amount))+'/jr';
+          c.font='9px system-ui';c.fillStyle=colStroke;
+          c.fillText(amtStr,xStart+4,y.bottom-6);
+          c.restore();
+        } else {
+          // Single vertical line for once-off events
+          const xpx=x.getPixelForValue(Math.min(ev.year1,labels.length-1));
+          c.save();c.beginPath();c.moveTo(xpx,y.top);c.lineTo(xpx,y.bottom);
+          c.strokeStyle=colStroke;c.lineWidth=1.5;c.setLineDash([4,3]);c.stroke();
+          c.fillStyle=colStroke;c.font='bold 10px system-ui';c.setLineDash([]);
+          c.fillText(lbl,xpx+3,y.top+labelOffset);
+          const amtStr=(isNeg?'−':'+')+fmt(Math.abs(ev.amount));
+          c.font='9px system-ui';c.fillText(amtStr,xpx+3,y.bottom-6);
+          c.restore();
+        }
+      });
+      // Goals
+      goalsData.forEach((g)=>{
+        const yr=Math.min(g.year,jaren);
+        const yPx=y.getPixelForValue(g.amount);
+        if(yPx<y.top||yPx>y.bottom) return;
+        const xPx=x.getPixelForValue(Math.min(yr,labels.length-1));
+        c.save();c.beginPath();c.moveTo(x.left,yPx);c.lineTo(xPx,yPx);
+        c.strokeStyle='rgba(210,153,34,.4)';c.lineWidth=1;c.setLineDash([4,3]);c.stroke();
+        c.fillStyle='rgba(210,153,34,.7)';c.font='bold 10px system-ui';c.setLineDash([]);
+        c.fillText('🎯 '+g.desc,x.left+4,yPx-4);c.restore();
+      });
+    }
+  };
+
+  chart=new Chart(ctx,{
+    type:'line',plugins:[annotPlugin],
+    data:{labels,datasets:[
+      {label:'P10',data:p10,borderWidth:0,pointRadius:0,fill:false,borderColor:'transparent'},
+      {label:'P90',data:p90,borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(123,140,222,.07)',borderColor:'transparent'},
+      {label:'P25',data:p25,borderWidth:0,pointRadius:0,fill:false,borderColor:'transparent'},
+      {label:'P75',data:p75,borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(123,140,222,.18)',borderColor:'transparent'},
+      {label:'Mediaan (P50)',data:p50,borderColor:'#5cba8a',borderWidth:2,pointRadius:0,fill:false,tension:.3},
+      {label:'Cumulatieve inleg',data:inleg,borderColor:'rgba(200,169,110,.55)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:.1},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:400},
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#13131c',borderColor:'#2a2a3d',borderWidth:1,
+        titleColor:'#8080a8',bodyColor:'#ece9f6',padding:12,cornerRadius:8,
+        callbacks:{label:ctx=>{
+          if(['P10','P25','P75','P90'].includes(ctx.dataset.label)) return null;
+          return`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
+        }}
+      }},
+      scales:{
+        x:{grid:{color:'#1a1a28'},border:{color:'#2a2a3d'},ticks:{color:'#8080a8',maxTicksLimit:12,font:{size:11}}},
+        y:{grid:{color:'#1a1a28'},border:{color:'#2a2a3d'},ticks:{color:'#8080a8',font:{size:11},callback:v=>fmt(v)}}
+      }
+    }
+  });
+}
+
+// ── INIT ──
+window.onload=()=>{
+  setMode('two');applyPreset('bal');
+  // Seed with examples
+  document.getElementById('nl-input').value='Gift aan kind €25.000 jaar 10\nJaarlijkse schenking €5.000 jaar 5 tot jaar 15';
+  document.getElementById('nl-goal-input').value='Doel pensioen €600.000 jaar 30';
+  parseNL();parseGoalNL();
+  setTimeout(runSimulation,100);
+};
+</script>
+</body>
+</html>
