@@ -7,22 +7,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg:       #0b0b10;
-  --surface:  #13131c;
-  --border:   #1e1e2c;
-  --border2:  #2a2a3d;
-  --text:     #ece9f6;
-  --muted:    #8080a8;
-  --faint:    #3a3a52;
-  --green:    #5cba8a;
-  --green-s:  #2d7a58;
-  --blue:     #7b8cde;
-  --purple:   #a47fd4;
-  --yellow:   #c8a96e;
-  --red:      #d4706a;
-  --orange:   #d4906a;
-  --green-bg: #0c1a15;
-  --blue-bg:  #111228;
+  --bg:       #F4F6FB;
+  --surface:  #FFFFFF;
+  --border:   #DDE3EE;
+  --border2:  #C5CFE0;
+  --text:     #1A2744;
+  --muted:    #5A6A8A;
+  --faint:    #8A9BBF;
+  --green:    #1A8C5B;
+  --green-s:  #0F6040;
+  --blue:     #1C52A0;
+  --purple:   #6B3FA0;
+  --yellow:   #A07010;
+  --red:      #C0362A;
+  --orange:   #B84A10;
+  --petrol:   #1A7080;
+  --green-bg: #EAF7F0;
+  --blue-bg:  #EAF0FB;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
@@ -70,7 +71,7 @@ input[type=range]::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%
 
 .alloc-pill{font-size:11px;text-align:center;padding:4px 8px;border-radius:5px;margin-bottom:12px}
 .alloc-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-s)}
-.alloc-err{background:#1a0d0d;color:var(--red);border:1px solid #6e1c1c}
+.alloc-err{background:#FFF0EF;color:var(--red);border:1px solid #E8A8A0}
 
 .blended-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
 .bl-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
@@ -119,8 +120,8 @@ input[type=range]::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%
 .nl-btn:hover{background:var(--blue-bg)}
 .nl-msg{font-size:11px;padding:6px 9px;border-radius:5px;margin-bottom:10px;line-height:1.5;display:none}
 .nl-msg.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-s);display:block}
-.nl-msg.err{background:#1a0d0d;color:var(--red);border:1px solid #6e1c1c;display:block}
-.nl-msg.warn{background:#1a1400;color:var(--yellow);border:1px solid #5a3e00;display:block}
+.nl-msg.err{background:#FFF0EF;color:var(--red);border:1px solid #E8A8A0;display:block}
+.nl-msg.warn{background:#FFF8E6;color:var(--yellow);border:1px solid #D4A030;display:block}
 .nl-hint{font-size:11px;color:var(--faint);line-height:1.7}
 .nl-hint em{color:var(--muted);font-style:normal}
 
@@ -165,9 +166,10 @@ input[type=range]::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%
 .pres-btn{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--muted);padding:5px 11px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
 .pres-btn:hover{border-color:var(--blue);color:var(--blue)}
 .app.present .sidebar{display:none}
-.app.present{grid-template-columns:0 1fr}
+.app.present{grid-template-columns:1fr}
+.app.present .main{grid-column:1}
 .app.present .pres-btn{border-color:var(--green);color:var(--green)}
-.app.present .chart-area{height:480px}
+.app.present .chart-area{height:calc(100vh - 220px);min-height:420px}
 
 /* ── PRESETS ── */
 .preset-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 16px;margin-bottom:14px}
@@ -181,7 +183,7 @@ input[type=range]::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%
 /* ── SCENARIO COMPARE ── */
 .compare-btn{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--muted);padding:5px 10px;font-size:12px;cursor:pointer;transition:all .15s}
 .compare-btn:hover{border-color:var(--purple);color:var(--purple)}
-.compare-btn.active{border-color:var(--purple);color:var(--purple);background:#1a1040}
+.compare-btn.active{border-color:var(--purple);color:var(--purple);background:#F3EDFD}
 
 /* ── SUMMARY BOX ── */
 .summary-box{background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:14px 16px;margin-top:10px;display:none}
@@ -202,9 +204,9 @@ input[type=range]::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%
     <div class="topbar-left">
       <div class="topbar-logo">
         <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-          <rect x="1" y="1" width="28" height="28" rx="7" fill="#13131c" stroke="#2a2a3d" stroke-width="1"/>
-          <polyline points="5,22 10,15 15,18 20,9 25,12" stroke="#7b8cde" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="25" cy="12" r="1.8" fill="#5cba8a"/>
+          <rect x="1" y="1" width="28" height="28" rx="7" fill="#EAF0FB" stroke="#C5CFE0" stroke-width="1"/>
+          <polyline points="5,22 10,15 15,18 20,9 25,12" stroke="#1C52A0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="25" cy="12" r="1.8" fill="#1A8C5B"/>
         </svg>
       </div>
       <span class="topbar-title">Vermogenssimulatie</span>
@@ -713,7 +715,7 @@ function togglePresentation(){
   document.getElementById('pres-btn').innerHTML=presentMode
     ?'<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v9H1zm6 9v2m-3 0h6"/></svg> Sluit presentatie'
     :'<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v9H1zm6 9v2m-3 0h6"/></svg> Presentatie';
-  if(chart) chart.resize();
+  setTimeout(()=>{ if(chart) chart.resize(); },60);
 }
 
 // ── PRESETS ──
@@ -794,8 +796,8 @@ function runCompareSims(){
   if(chart){
     chart.data.datasets=chart.data.datasets.filter(d=>!d._compare);
     chart.data.datasets.push(
-      {label:`Mediaan Defensief`,data:results.def,borderColor:'rgba(139,148,158,.6)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.3,_compare:true},
-      {label:`Mediaan Groei`,data:results.gro,borderColor:'rgba(163,113,247,.6)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.3,_compare:true},
+      {label:`Mediaan Defensief`,data:results.def,borderColor:'rgba(90,106,138,.65)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.3,_compare:true},
+      {label:`Mediaan Groei`,data:results.gro,borderColor:'rgba(107,63,160,.65)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.3,_compare:true},
     );
     chart.update();
   }
@@ -919,15 +921,15 @@ function drawChart(labels,p10,p25,p50,p75,p90,inleg,trans,jaren){
       if(mode==='two'){
         const xpx=x.getPixelForValue(Math.min(trans,labels.length-1));
         c.save();c.beginPath();c.moveTo(xpx,y.top);c.lineTo(xpx,y.bottom);
-        c.strokeStyle='rgba(163,113,247,.3)';c.lineWidth=1;c.setLineDash([4,3]);c.stroke();
-        c.fillStyle='rgba(163,113,247,.55)';c.font='10px system-ui';c.setLineDash([]);
+        c.strokeStyle='rgba(107,63,160,.35)';c.lineWidth=1;c.setLineDash([4,3]);c.stroke();
+        c.fillStyle='rgba(107,63,160,.75)';c.font='10px system-ui';c.setLineDash([]);
         c.fillText('CMA→DNB',xpx+4,y.top+14);c.restore();
       }
       // Events
       eventsData.forEach((ev,idx)=>{
         const isNeg=ev.amount<0;
-        const colStroke=isNeg?'rgba(212,112,106,.7)':'rgba(92,186,138,.7)';
-        const colFill  =isNeg?'rgba(212,112,106,.09)':'rgba(92,186,138,.09)';
+        const colStroke=isNeg?'rgba(192,54,42,.75)':'rgba(26,140,91,.75)';
+        const colFill  =isNeg?'rgba(192,54,42,.07)':'rgba(26,140,91,.07)';
         const lbl=ev.desc.length>16?ev.desc.slice(0,16)+'…':ev.desc;
         const labelOffset=28+(idx%4)*11; // stagger labels to avoid overlap
 
@@ -972,8 +974,8 @@ function drawChart(labels,p10,p25,p50,p75,p90,inleg,trans,jaren){
         if(yPx<y.top||yPx>y.bottom) return;
         const xPx=x.getPixelForValue(Math.min(yr,labels.length-1));
         c.save();c.beginPath();c.moveTo(x.left,yPx);c.lineTo(xPx,yPx);
-        c.strokeStyle='rgba(210,153,34,.4)';c.lineWidth=1;c.setLineDash([4,3]);c.stroke();
-        c.fillStyle='rgba(210,153,34,.7)';c.font='bold 10px system-ui';c.setLineDash([]);
+        c.strokeStyle='rgba(160,112,16,.45)';c.lineWidth=1;c.setLineDash([4,3]);c.stroke();
+        c.fillStyle='rgba(160,112,16,.85)';c.font='bold 10px system-ui';c.setLineDash([]);
         c.fillText('🎯 '+g.desc,x.left+4,yPx-4);c.restore();
       });
     }
@@ -983,26 +985,26 @@ function drawChart(labels,p10,p25,p50,p75,p90,inleg,trans,jaren){
     type:'line',plugins:[annotPlugin],
     data:{labels,datasets:[
       {label:'P10',data:p10,borderWidth:0,pointRadius:0,fill:false,borderColor:'transparent'},
-      {label:'P90',data:p90,borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(123,140,222,.07)',borderColor:'transparent'},
+      {label:'P90',data:p90,borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(28,82,160,.07)',borderColor:'transparent'},
       {label:'P25',data:p25,borderWidth:0,pointRadius:0,fill:false,borderColor:'transparent'},
-      {label:'P75',data:p75,borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(123,140,222,.18)',borderColor:'transparent'},
-      {label:'Mediaan (P50)',data:p50,borderColor:'#5cba8a',borderWidth:2,pointRadius:0,fill:false,tension:.3},
-      {label:'Cumulatieve inleg',data:inleg,borderColor:'rgba(200,169,110,.55)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:.1},
+      {label:'P75',data:p75,borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(28,82,160,.15)',borderColor:'transparent'},
+      {label:'Mediaan (P50)',data:p50,borderColor:'#1A8C5B',borderWidth:2,pointRadius:0,fill:false,tension:.3},
+      {label:'Cumulatieve inleg',data:inleg,borderColor:'rgba(160,112,16,.60)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:.1},
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,animation:{duration:400},
       interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'#13131c',borderColor:'#2a2a3d',borderWidth:1,
-        titleColor:'#8080a8',bodyColor:'#ece9f6',padding:12,cornerRadius:8,
+        backgroundColor:'#FFFFFF',borderColor:'#C5CFE0',borderWidth:1,
+        titleColor:'#5A6A8A',bodyColor:'#1A2744',padding:12,cornerRadius:8,
         callbacks:{label:ctx=>{
           if(['P10','P25','P75','P90'].includes(ctx.dataset.label)) return null;
           return`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
         }}
       }},
       scales:{
-        x:{grid:{color:'#1a1a28'},border:{color:'#2a2a3d'},ticks:{color:'#8080a8',maxTicksLimit:12,font:{size:11}}},
-        y:{grid:{color:'#1a1a28'},border:{color:'#2a2a3d'},ticks:{color:'#8080a8',font:{size:11},callback:v=>fmt(v)}}
+        x:{grid:{color:'#DDE3EE'},border:{color:'#C5CFE0'},ticks:{color:'#5A6A8A',maxTicksLimit:12,font:{size:11}}},
+        y:{grid:{color:'#DDE3EE'},border:{color:'#C5CFE0'},ticks:{color:'#5A6A8A',font:{size:11},callback:v=>fmt(v)}}
       }
     }
   });
